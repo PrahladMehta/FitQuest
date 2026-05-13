@@ -1,3 +1,4 @@
+import { useMemo } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { colors } from '../constants/theme';
 import { formatLongDate } from '../utils/date';
@@ -9,7 +10,14 @@ type Props = {
 };
 
 export default function RecentList({ workouts, onPress }: Props) {
-  const keys = Object.keys(workouts).sort((a, b) => (a < b ? 1 : -1)).slice(0, 5);
+  const keys = useMemo(
+    () =>
+      Object.keys(workouts)
+        .filter(k => workouts[k].exercises.length > 0)
+        .sort((a, b) => (a < b ? 1 : -1))
+        .slice(0, 5),
+    [workouts],
+  );
 
   if (keys.length === 0) {
     return (
@@ -23,9 +31,8 @@ export default function RecentList({ workouts, onPress }: Props) {
   return (
     <View style={styles.list}>
       {keys.map(key => {
-        const list = workouts[key];
-        const titles = list.map(w => w.title).join(' • ');
-        const totalEx = list.reduce((s, w) => s + w.exercises.length, 0);
+        const workout = workouts[key];
+        const totalSets = workout.exercises.reduce((s, e) => s + e.sets.length, 0);
         return (
           <Pressable
             key={key}
@@ -35,10 +42,13 @@ export default function RecentList({ workouts, onPress }: Props) {
             <View style={styles.info}>
               <Text style={styles.date}>{formatLongDate(key)}</Text>
               <Text style={styles.titles} numberOfLines={1}>
-                {titles}
+                {workout.title} · {workout.exercises.length}{' '}
+                {workout.exercises.length === 1 ? 'exercise' : 'exercises'}
               </Text>
             </View>
-            <Text style={styles.badge}>{totalEx} ex</Text>
+            <Text style={styles.badge}>
+              {totalSets} {totalSets === 1 ? 'set' : 'sets'}
+            </Text>
           </Pressable>
         );
       })}

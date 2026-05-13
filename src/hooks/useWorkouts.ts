@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { loadWorkouts, saveWorkouts } from '../services/workoutStorage';
 import { genId } from '../utils/id';
 import type { Exercise, ExerciseSet, Workout, WorkoutMap } from '../types/workout';
@@ -8,39 +8,54 @@ export function useWorkouts() {
   const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
+    let cancelled = false;
     loadWorkouts()
-      .then(setWorkouts)
+      .then(data => {
+        if (!cancelled) setWorkouts(data);
+      })
       .catch(e => console.warn('Failed to load workouts', e))
-      .finally(() => setLoaded(true));
+      .finally(() => {
+        if (!cancelled) setLoaded(true);
+      });
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   useEffect(() => {
     if (!loaded) return;
-    saveWorkouts(workouts).catch(e => console.warn('Failed to save workouts', e));
+    saveWorkouts(workouts).catch(e =>
+      console.warn('Failed to save workouts', e),
+    );
   }, [workouts, loaded]);
 
+  const upsertWorkout = useCallback((workout: Workout) => {
+    setWorkouts(prev => ({ ...prev, [workout.date]: workout }));
+  }, []);
+
+  const deleteWorkout = useCallback((dateKey: string) => {
+    setWorkouts(prev => {
+      if (!prev[dateKey]) return prev;
+      const next = { ...prev };
+      delete next[dateKey];
+      return next;
+    });
+  }, []);
+
   const mutateWorkout = useCallback(
-    (dateKey: string, workoutId: string, fn: (w: Workout) => Workout) => {
+    (dateKey: string, fn: (w: Workout) => Workout) => {
       setWorkouts(prev => {
-        const list = prev[dateKey];
-        if (!list) return prev;
-        return {
-          ...prev,
-          [dateKey]: list.map(w => (w.id === workoutId ? fn(w) : w)),
-        };
+        const existing = prev[dateKey];
+        if (!existing) return prev;
+        return { ...prev, [dateKey]: fn(existing) };
       });
     },
     [],
   );
 
   const mutateExercise = useCallback(
-    (
-      dateKey: string,
-      workoutId: string,
-      exerciseId: string,
-      fn: (e: Exercise) => Exercise,
-    ) => {
-      mutateWorkout(dateKey, workoutId, w => ({
+    (dateKey: string, exerciseId: string, fn: (e: Exercise) => Exercise) => {
+      mutateWorkout(dateKey, w => ({
         ...w,
         exercises: w.exercises.map(e => (e.id === exerciseId ? fn(e) : e)),
       }));
@@ -48,29 +63,16 @@ export function useWorkouts() {
     [mutateWorkout],
   );
 
-  const addWorkout = useCallback((workout: Workout) => {
-    setWorkouts(prev => {
-      const list = prev[workout.date] ? [...prev[workout.date], workout] : [workout];
-      return { ...prev, [workout.date]: list };
-    });
-  }, []);
-
-  const deleteWorkout = useCallback((dateKey: string, id: string) => {
-    setWorkouts(prev => {
-      const list = (prev[dateKey] || []).filter(w => w.id !== id);
-      const next = { ...prev };
-      if (list.length === 0) {
-        delete next[dateKey];
-      } else {
-        next[dateKey] = list;
-      }
-      return next;
-    });
-  }, []);
+  const setTitle = useCallback(
+    (dateKey: string, title: string) => {
+      mutateWorkout(dateKey, w => ({ ...w, title }));
+    },
+    [mutateWorkout],
+  );
 
   const addExercise = useCallback(
-    (dateKey: string, workoutId: string, name: string) => {
-      mutateWorkout(dateKey, workoutId, w => ({
+    (dateKey: string, name: string) => {
+      mutateWorkout(dateKey, w => ({
         ...w,
         exercises: [...w.exercises, { id: genId(), name, sets: [] }],
       }));
@@ -79,15 +81,15 @@ export function useWorkouts() {
   );
 
   const renameExercise = useCallback(
-    (dateKey: string, workoutId: string, exerciseId: string, name: string) => {
-      mutateExercise(dateKey, workoutId, exerciseId, e => ({ ...e, name }));
+    (dateKey: string, exerciseId: string, name: string) => {
+      mutateExercise(dateKey, exerciseId, e => ({ ...e, name }));
     },
     [mutateExercise],
   );
 
   const deleteExercise = useCallback(
-    (dateKey: string, workoutId: string, exerciseId: string) => {
-      mutateWorkout(dateKey, workoutId, w => ({
+    (dateKey: string, exerciseId: string) => {
+      mutateWorkout(dateKey, w => ({
         ...w,
         exercises: w.exercises.filter(e => e.id !== exerciseId),
       }));
@@ -96,13 +98,8 @@ export function useWorkouts() {
   );
 
   const addSet = useCallback(
-    (
-      dateKey: string,
-      workoutId: string,
-      exerciseId: string,
-      set: Omit<ExerciseSet, 'id'>,
-    ) => {
-      mutateExercise(dateKey, workoutId, exerciseId, e => ({
+    (dateKey: string, exerciseId: string, set: Omit<ExerciseSet, 'id'>) => {
+      mutateExercise(dateKey, exerciseId, e => ({
         ...e,
         sets: [...e.sets, { ...set, id: genId() }],
       }));
@@ -113,12 +110,11 @@ export function useWorkouts() {
   const updateSet = useCallback(
     (
       dateKey: string,
-      workoutId: string,
       exerciseId: string,
       setId: string,
       patch: Partial<Omit<ExerciseSet, 'id'>>,
     ) => {
-      mutateExercise(dateKey, workoutId, exerciseId, e => ({
+      mutateExercise(dateKey, exerciseId, e => ({
         ...e,
         sets: e.sets.map(s => (s.id === setId ? { ...s, ...patch } : s)),
       }));
@@ -127,8 +123,8 @@ export function useWorkouts() {
   );
 
   const deleteSet = useCallback(
-    (dateKey: string, workoutId: string, exerciseId: string, setId: string) => {
-      mutateExercise(dateKey, workoutId, exerciseId, e => ({
+    (dateKey: string, exerciseId: string, setId: string) => {
+      mutateExercise(dateKey, exerciseId, e => ({
         ...e,
         sets: e.sets.filter(s => s.id !== setId),
       }));
@@ -136,16 +132,32 @@ export function useWorkouts() {
     [mutateExercise],
   );
 
-  return {
-    workouts,
-    loaded,
-    addWorkout,
-    deleteWorkout,
-    addExercise,
-    renameExercise,
-    deleteExercise,
-    addSet,
-    updateSet,
-    deleteSet,
-  };
+  return useMemo(
+    () => ({
+      workouts,
+      loaded,
+      upsertWorkout,
+      deleteWorkout,
+      setTitle,
+      addExercise,
+      renameExercise,
+      deleteExercise,
+      addSet,
+      updateSet,
+      deleteSet,
+    }),
+    [
+      workouts,
+      loaded,
+      upsertWorkout,
+      deleteWorkout,
+      setTitle,
+      addExercise,
+      renameExercise,
+      deleteExercise,
+      addSet,
+      updateSet,
+      deleteSet,
+    ],
+  );
 }

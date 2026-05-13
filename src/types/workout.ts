@@ -17,4 +17,4 @@ export type Workout = {
   exercises: Exercise[];
 };
 
-export type WorkoutMap = Record<string, Workout[]>;
+export type WorkoutMap = Record<string, Workout>;

@@ -68,7 +68,8 @@ export default function Calendar({
             return <View key={`empty-${idx}`} style={styles.cell} />;
           }
           const key = toDateKey(new Date(year, month, day));
-          const has = !!workouts[key]?.length;
+          const workout = workouts[key];
+          const has = !!workout && workout.exercises.length > 0;
           const isToday = key === todayKey;
           return (
             <Pressable
@@ -87,7 +88,7 @@ export default function Calendar({
                   style={[
                     styles.dayText,
                     has && styles.dayTextDone,
-                    isToday && styles.dayTextToday,
+                    isToday && !has && styles.dayTextToday,
                   ]}
                 >
                   {day}

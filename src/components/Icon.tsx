@@ -9,7 +9,11 @@ export type IconName =
   | 'calendar'
   | 'lock'
   | 'trash-2'
-  | 'edit-2';
+  | 'edit-2'
+  | 'arrow-right'
+  | 'activity'
+  | 'bar-chart-2'
+  | 'zap';
 
 type Props = {
   name: IconName;
