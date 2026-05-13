@@ -20,26 +20,25 @@ import type { ExerciseSet, Workout } from '../types/workout';
 type Props = {
   dateKey: string | null;
   todayKey: string;
-  workouts: Workout[];
+  workout: Workout | undefined;
   onClose: () => void;
-  onAddExercise: (workoutId: string, name: string) => void;
-  onRenameExercise: (workoutId: string, exerciseId: string, name: string) => void;
-  onDeleteExercise: (workoutId: string, exerciseId: string) => void;
-  onAddSet: (workoutId: string, exerciseId: string, set: Omit<ExerciseSet, 'id'>) => void;
+  onAddExercise: (name: string) => void;
+  onRenameExercise: (exerciseId: string, name: string) => void;
+  onDeleteExercise: (exerciseId: string) => void;
+  onAddSet: (exerciseId: string, set: Omit<ExerciseSet, 'id'>) => void;
   onUpdateSet: (
-    workoutId: string,
     exerciseId: string,
     setId: string,
     patch: Partial<Omit<ExerciseSet, 'id'>>,
   ) => void;
-  onDeleteSet: (workoutId: string, exerciseId: string, setId: string) => void;
-  onCreateNewWorkout: () => void;
+  onDeleteSet: (exerciseId: string, setId: string) => void;
+  onCreateWorkout: () => void;
 };
 
 export default function DayScreen({
   dateKey,
   todayKey,
-  workouts,
+  workout,
   onClose,
   onAddExercise,
   onRenameExercise,
@@ -47,10 +46,11 @@ export default function DayScreen({
   onAddSet,
   onUpdateSet,
   onDeleteSet,
-  onCreateNewWorkout,
+  onCreateWorkout,
 }: Props) {
   const insets = useSafeAreaInsets();
   const isToday = dateKey === todayKey;
+  const hasWorkout = !!workout && workout.exercises.length > 0;
 
   return (
     <Modal
@@ -87,65 +87,56 @@ export default function DayScreen({
           ]}
           keyboardShouldPersistTaps="handled"
         >
-          {workouts.length === 0 ? (
+          {!workout ? (
             <View style={styles.emptyCard}>
               <View style={styles.emptyIconWrap}>
                 <Icon name="calendar" color={colors.textMuted} size={36} />
               </View>
-              <Text style={styles.emptyTitle}>No workouts logged</Text>
+              <Text style={styles.emptyTitle}>No workout logged</Text>
               <Text style={styles.emptySub}>
                 {isToday
-                  ? 'Create your first workout for today below.'
+                  ? 'Create today\'s workout below.'
                   : 'Nothing was logged on this day.'}
               </Text>
+              {isToday && (
+                <Pressable
+                  onPress={onCreateWorkout}
+                  style={({ pressed }) => [
+                    styles.createBtn,
+                    pressed && styles.createBtnPressed,
+                  ]}
+                >
+                  <Icon name="plus" color={colors.background} size={18} />
+                  <Text style={styles.createBtnText}>Create Workout</Text>
+                </Pressable>
+              )}
             </View>
           ) : (
-            workouts.map(workout => (
-              <View key={workout.id} style={styles.workoutBlock}>
-                <Text style={styles.workoutTitle}>{workout.title}</Text>
+            <View style={styles.workoutBlock}>
+              <Text style={styles.workoutTitle}>{workout.title}</Text>
 
-                {workout.exercises.map(ex => (
-                  <ExerciseCard
-                    key={ex.id}
-                    exercise={ex}
-                    editable={isToday}
-                    onRename={name => onRenameExercise(workout.id, ex.id, name)}
-                    onDelete={() => onDeleteExercise(workout.id, ex.id)}
-                    onAddSet={set => onAddSet(workout.id, ex.id, set)}
-                    onUpdateSet={(setId, patch) =>
-                      onUpdateSet(workout.id, ex.id, setId, patch)
-                    }
-                    onDeleteSet={setId => onDeleteSet(workout.id, ex.id, setId)}
-                  />
-                ))}
+              {workout.exercises.map(ex => (
+                <ExerciseCard
+                  key={ex.id}
+                  exercise={ex}
+                  editable={isToday}
+                  onRename={name => onRenameExercise(ex.id, name)}
+                  onDelete={() => onDeleteExercise(ex.id)}
+                  onAddSet={set => onAddSet(ex.id, set)}
+                  onUpdateSet={(setId, patch) => onUpdateSet(ex.id, setId, patch)}
+                  onDeleteSet={setId => onDeleteSet(ex.id, setId)}
+                />
+              ))}
 
-                {isToday && (
-                  <AddExerciseRow
-                    onAdd={name => onAddExercise(workout.id, name)}
-                  />
-                )}
-              </View>
-            ))
+              {isToday && <AddExerciseRow onAdd={onAddExercise} />}
+            </View>
           )}
 
-          {isToday && (
-            <Pressable
-              onPress={onCreateNewWorkout}
-              style={({ pressed }) => [
-                styles.newWorkoutBtn,
-                pressed && styles.newWorkoutBtnPressed,
-              ]}
-            >
-              <Icon name="plus" color={colors.background} size={18} />
-              <Text style={styles.newWorkoutBtnText}>New Workout</Text>
-            </Pressable>
-          )}
-
-          {!isToday && workouts.length > 0 && (
+          {!isToday && hasWorkout && (
             <View style={styles.readOnlyNote}>
               <Icon name="lock" color={colors.textMuted} size={13} />
               <Text style={styles.readOnlyText}>
-                Read-only — only today's workouts can be edited.
+                Read-only — only today's workout can be edited.
               </Text>
             </View>
           )}
@@ -227,22 +218,22 @@ const styles = StyleSheet.create({
     color: colors.textMuted,
     fontSize: 13,
     textAlign: 'center',
+    marginBottom: 16,
   },
-  newWorkoutBtn: {
+  createBtn: {
     flexDirection: 'row',
     backgroundColor: colors.accent,
-    paddingVertical: 14,
+    paddingVertical: 12,
+    paddingHorizontal: 22,
     borderRadius: 14,
     alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: 6,
   },
-  newWorkoutBtnPressed: {
+  createBtnPressed: {
     backgroundColor: colors.accentPressed,
   },
-  newWorkoutBtnText: {
+  createBtnText: {
     color: colors.background,
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: '700',
     marginLeft: 6,
   },

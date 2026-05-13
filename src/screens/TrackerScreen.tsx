@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -36,41 +36,43 @@ export default function TrackerScreen({ navigation }: Props) {
   const [dayScreenKey, setDayScreenKey] = useState<string | null>(null);
 
   const monthStats = useMemo(() => {
-    const keys = Object.keys(workouts).filter(k => {
+    let days = 0;
+    let sessions = 0;
+    let sets = 0;
+    for (const [k, w] of Object.entries(workouts)) {
       const [y, m] = k.split('-').map(Number);
-      return y === viewYear && m - 1 === viewMonth;
-    });
-    const days = keys.length;
-    const sessions = keys.reduce((sum, k) => sum + workouts[k].length, 0);
-    const sets = keys.reduce(
-      (sum, k) =>
-        sum +
-        workouts[k].reduce(
-          (s, w) => s + w.exercises.reduce((es, e) => es + e.sets.length, 0),
-          0,
-        ),
-      0,
-    );
+      if (y !== viewYear || m - 1 !== viewMonth) continue;
+      if (w.exercises.length === 0) continue;
+      days += 1;
+      sessions += 1;
+      sets += w.exercises.reduce((s, e) => s + e.sets.length, 0);
+    }
     return { days, sessions, sets };
   }, [workouts, viewMonth, viewYear]);
 
-  const goPrevMonth = () => {
-    if (viewMonth === 0) {
-      setViewMonth(11);
-      setViewYear(y => y - 1);
-    } else {
-      setViewMonth(m => m - 1);
-    }
-  };
+  const goPrevMonth = useCallback(() => {
+    setViewMonth(m => {
+      if (m === 0) {
+        setViewYear(y => y - 1);
+        return 11;
+      }
+      return m - 1;
+    });
+  }, []);
 
-  const goNextMonth = () => {
-    if (viewMonth === 11) {
-      setViewMonth(0);
-      setViewYear(y => y + 1);
-    } else {
-      setViewMonth(m => m + 1);
-    }
-  };
+  const goNextMonth = useCallback(() => {
+    setViewMonth(m => {
+      if (m === 11) {
+        setViewYear(y => y + 1);
+        return 0;
+      }
+      return m + 1;
+    });
+  }, []);
+
+  const closeDayScreen = useCallback(() => setDayScreenKey(null), []);
+
+  const dayWorkout = dayScreenKey ? workouts[dayScreenKey] : undefined;
 
   return (
     <View style={styles.screen}>
@@ -114,33 +116,27 @@ export default function TrackerScreen({ navigation }: Props) {
       <DayScreen
         dateKey={dayScreenKey}
         todayKey={todayKey}
-        workouts={dayScreenKey ? workouts[dayScreenKey] || [] : []}
-        onClose={() => setDayScreenKey(null)}
-        onAddExercise={(workoutId, name) => {
-          if (!dayScreenKey) return;
-          addExercise(dayScreenKey, workoutId, name);
+        workout={dayWorkout}
+        onClose={closeDayScreen}
+        onAddExercise={name => {
+          if (dayScreenKey) addExercise(dayScreenKey, name);
         }}
-        onRenameExercise={(workoutId, exerciseId, name) => {
-          if (!dayScreenKey) return;
-          renameExercise(dayScreenKey, workoutId, exerciseId, name);
+        onRenameExercise={(exerciseId, name) => {
+          if (dayScreenKey) renameExercise(dayScreenKey, exerciseId, name);
         }}
-        onDeleteExercise={(workoutId, exerciseId) => {
-          if (!dayScreenKey) return;
-          deleteExercise(dayScreenKey, workoutId, exerciseId);
+        onDeleteExercise={exerciseId => {
+          if (dayScreenKey) deleteExercise(dayScreenKey, exerciseId);
         }}
-        onAddSet={(workoutId, exerciseId, set) => {
-          if (!dayScreenKey) return;
-          addSet(dayScreenKey, workoutId, exerciseId, set);
+        onAddSet={(exerciseId, set) => {
+          if (dayScreenKey) addSet(dayScreenKey, exerciseId, set);
         }}
-        onUpdateSet={(workoutId, exerciseId, setId, patch) => {
-          if (!dayScreenKey) return;
-          updateSet(dayScreenKey, workoutId, exerciseId, setId, patch);
+        onUpdateSet={(exerciseId, setId, patch) => {
+          if (dayScreenKey) updateSet(dayScreenKey, exerciseId, setId, patch);
         }}
-        onDeleteSet={(workoutId, exerciseId, setId) => {
-          if (!dayScreenKey) return;
-          deleteSet(dayScreenKey, workoutId, exerciseId, setId);
+        onDeleteSet={(exerciseId, setId) => {
+          if (dayScreenKey) deleteSet(dayScreenKey, exerciseId, setId);
         }}
-        onCreateNewWorkout={() => {
+        onCreateWorkout={() => {
           setDayScreenKey(null);
           navigation.navigate('AddWorkout');
         }}
