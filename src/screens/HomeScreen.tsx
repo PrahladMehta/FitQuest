@@ -18,7 +18,16 @@ export default function HomeScreen() {
   const today = useMemo(() => new Date(), []);
   const todayKey = useMemo(() => toDateKey(today), [today]);
 
-  const { workouts, addWorkout, addExerciseToWorkout, deleteExercise } = useWorkouts();
+  const {
+    workouts,
+    addWorkout,
+    addExercise,
+    renameExercise,
+    deleteExercise,
+    addSet,
+    updateSet,
+    deleteSet,
+  } = useWorkouts();
 
   const [viewMonth, setViewMonth] = useState(today.getMonth());
   const [viewYear, setViewYear] = useState(today.getFullYear());
@@ -32,11 +41,16 @@ export default function HomeScreen() {
     });
     const days = keys.length;
     const sessions = keys.reduce((sum, k) => sum + workouts[k].length, 0);
-    const exercises = keys.reduce(
-      (sum, k) => sum + workouts[k].reduce((s, w) => s + w.exercises.length, 0),
+    const sets = keys.reduce(
+      (sum, k) =>
+        sum +
+        workouts[k].reduce(
+          (s, w) => s + w.exercises.reduce((es, e) => es + e.sets.length, 0),
+          0,
+        ),
       0,
     );
-    return { days, sessions, exercises };
+    return { days, sessions, sets };
   }, [workouts, viewMonth, viewYear]);
 
   const goPrevMonth = () => {
@@ -80,7 +94,7 @@ export default function HomeScreen() {
           <View style={styles.summaryRow}>
             <SummaryStat value={String(monthStats.days)} label="Active Days" />
             <SummaryStat value={String(monthStats.sessions)} label="Sessions" />
-            <SummaryStat value={String(monthStats.exercises)} label="Exercises" />
+            <SummaryStat value={String(monthStats.sets)} label="Total Sets" />
           </View>
         </View>
 
@@ -118,13 +132,29 @@ export default function HomeScreen() {
         todayKey={todayKey}
         workouts={dayScreenKey ? workouts[dayScreenKey] || [] : []}
         onClose={() => setDayScreenKey(null)}
-        onAddExercise={(workoutId, exercise) => {
+        onAddExercise={(workoutId, name) => {
           if (!dayScreenKey) return;
-          addExerciseToWorkout(dayScreenKey, workoutId, exercise);
+          addExercise(dayScreenKey, workoutId, name);
+        }}
+        onRenameExercise={(workoutId, exerciseId, name) => {
+          if (!dayScreenKey) return;
+          renameExercise(dayScreenKey, workoutId, exerciseId, name);
         }}
         onDeleteExercise={(workoutId, exerciseId) => {
           if (!dayScreenKey) return;
           deleteExercise(dayScreenKey, workoutId, exerciseId);
+        }}
+        onAddSet={(workoutId, exerciseId, set) => {
+          if (!dayScreenKey) return;
+          addSet(dayScreenKey, workoutId, exerciseId, set);
+        }}
+        onUpdateSet={(workoutId, exerciseId, setId, patch) => {
+          if (!dayScreenKey) return;
+          updateSet(dayScreenKey, workoutId, exerciseId, setId, patch);
+        }}
+        onDeleteSet={(workoutId, exerciseId, setId) => {
+          if (!dayScreenKey) return;
+          deleteSet(dayScreenKey, workoutId, exerciseId, setId);
         }}
         onCreateNewWorkout={() => setAddModalOpen(true)}
       />

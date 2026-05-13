@@ -3,6 +3,7 @@ import { MONTH_NAMES, WEEKDAYS } from '../constants/dates';
 import { colors } from '../constants/theme';
 import { toDateKey } from '../utils/date';
 import type { WorkoutMap } from '../types/workout';
+import Icon from './Icon';
 
 type Props = {
   year: number;
@@ -39,7 +40,7 @@ export default function Calendar({
           hitSlop={10}
           style={({ pressed }) => [styles.navBtn, pressed && styles.navBtnPressed]}
         >
-          <Text style={styles.navIcon}>‹</Text>
+          <Icon name="chevron-left" color={colors.text} size={20} />
         </Pressable>
         <Text style={styles.title}>
           {MONTH_NAMES[month]} {year}
@@ -49,7 +50,7 @@ export default function Calendar({
           hitSlop={10}
           style={({ pressed }) => [styles.navBtn, pressed && styles.navBtnPressed]}
         >
-          <Text style={styles.navIcon}>›</Text>
+          <Icon name="chevron-right" color={colors.text} size={20} />
         </Pressable>
       </View>
 
@@ -91,7 +92,11 @@ export default function Calendar({
                 >
                   {day}
                 </Text>
-                {has && <Text style={styles.tick}>✓</Text>}
+                {has && (
+                  <View style={styles.tick}>
+                    <Icon name="check" color={colors.background} size={9} />
+                  </View>
+                )}
               </View>
             </Pressable>
           );
@@ -139,12 +144,6 @@ const styles = StyleSheet.create({
   },
   navBtnPressed: {
     backgroundColor: colors.surfacePressed,
-  },
-  navIcon: {
-    color: colors.text,
-    fontSize: 20,
-    fontWeight: '700',
-    lineHeight: 22,
   },
   weekRow: {
     flexDirection: 'row',
@@ -196,9 +195,6 @@ const styles = StyleSheet.create({
     color: colors.accent,
   },
   tick: {
-    fontSize: 10,
-    fontWeight: '700',
-    color: colors.background,
     marginTop: 1,
   },
   legend: {

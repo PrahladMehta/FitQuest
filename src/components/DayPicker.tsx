@@ -9,7 +9,7 @@ type Props = {
   onChange: (key: string) => void;
 };
 
-export default function DayPicker({ value, onChange }: Props) {
+export default function DayPicker({ value, onChange }: Props) { 
   const days = useMemo(() => {
     const arr: { key: string; label: string; sub: string }[] = [];
     const base = new Date();

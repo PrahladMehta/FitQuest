@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { loadWorkouts, saveWorkouts } from '../services/workoutStorage';
-import type { Exercise, Workout, WorkoutMap } from '../types/workout';
+import { genId } from '../utils/id';
+import type { Exercise, ExerciseSet, Workout, WorkoutMap } from '../types/workout';
 
 export function useWorkouts() {
   const [workouts, setWorkouts] = useState<WorkoutMap>({});
@@ -17,6 +18,35 @@ export function useWorkouts() {
     if (!loaded) return;
     saveWorkouts(workouts).catch(e => console.warn('Failed to save workouts', e));
   }, [workouts, loaded]);
+
+  const mutateWorkout = useCallback(
+    (dateKey: string, workoutId: string, fn: (w: Workout) => Workout) => {
+      setWorkouts(prev => {
+        const list = prev[dateKey];
+        if (!list) return prev;
+        return {
+          ...prev,
+          [dateKey]: list.map(w => (w.id === workoutId ? fn(w) : w)),
+        };
+      });
+    },
+    [],
+  );
+
+  const mutateExercise = useCallback(
+    (
+      dateKey: string,
+      workoutId: string,
+      exerciseId: string,
+      fn: (e: Exercise) => Exercise,
+    ) => {
+      mutateWorkout(dateKey, workoutId, w => ({
+        ...w,
+        exercises: w.exercises.map(e => (e.id === exerciseId ? fn(e) : e)),
+      }));
+    },
+    [mutateWorkout],
+  );
 
   const addWorkout = useCallback((workout: Workout) => {
     setWorkouts(prev => {
@@ -38,40 +68,72 @@ export function useWorkouts() {
     });
   }, []);
 
-  const addExerciseToWorkout = useCallback(
-    (dateKey: string, workoutId: string, exercise: Exercise) => {
-      setWorkouts(prev => {
-        const list = prev[dateKey];
-        if (!list) return prev;
-        return {
-          ...prev,
-          [dateKey]: list.map(w =>
-            w.id === workoutId
-              ? { ...w, exercises: [...w.exercises, exercise] }
-              : w,
-          ),
-        };
-      });
+  const addExercise = useCallback(
+    (dateKey: string, workoutId: string, name: string) => {
+      mutateWorkout(dateKey, workoutId, w => ({
+        ...w,
+        exercises: [...w.exercises, { id: genId(), name, sets: [] }],
+      }));
     },
-    [],
+    [mutateWorkout],
+  );
+
+  const renameExercise = useCallback(
+    (dateKey: string, workoutId: string, exerciseId: string, name: string) => {
+      mutateExercise(dateKey, workoutId, exerciseId, e => ({ ...e, name }));
+    },
+    [mutateExercise],
   );
 
   const deleteExercise = useCallback(
     (dateKey: string, workoutId: string, exerciseId: string) => {
-      setWorkouts(prev => {
-        const list = prev[dateKey];
-        if (!list) return prev;
-        return {
-          ...prev,
-          [dateKey]: list.map(w =>
-            w.id === workoutId
-              ? { ...w, exercises: w.exercises.filter(e => e.id !== exerciseId) }
-              : w,
-          ),
-        };
-      });
+      mutateWorkout(dateKey, workoutId, w => ({
+        ...w,
+        exercises: w.exercises.filter(e => e.id !== exerciseId),
+      }));
     },
-    [],
+    [mutateWorkout],
+  );
+
+  const addSet = useCallback(
+    (
+      dateKey: string,
+      workoutId: string,
+      exerciseId: string,
+      set: Omit<ExerciseSet, 'id'>,
+    ) => {
+      mutateExercise(dateKey, workoutId, exerciseId, e => ({
+        ...e,
+        sets: [...e.sets, { ...set, id: genId() }],
+      }));
+    },
+    [mutateExercise],
+  );
+
+  const updateSet = useCallback(
+    (
+      dateKey: string,
+      workoutId: string,
+      exerciseId: string,
+      setId: string,
+      patch: Partial<Omit<ExerciseSet, 'id'>>,
+    ) => {
+      mutateExercise(dateKey, workoutId, exerciseId, e => ({
+        ...e,
+        sets: e.sets.map(s => (s.id === setId ? { ...s, ...patch } : s)),
+      }));
+    },
+    [mutateExercise],
+  );
+
+  const deleteSet = useCallback(
+    (dateKey: string, workoutId: string, exerciseId: string, setId: string) => {
+      mutateExercise(dateKey, workoutId, exerciseId, e => ({
+        ...e,
+        sets: e.sets.filter(s => s.id !== setId),
+      }));
+    },
+    [mutateExercise],
   );
 
   return {
@@ -79,7 +141,11 @@ export function useWorkouts() {
     loaded,
     addWorkout,
     deleteWorkout,
-    addExerciseToWorkout,
+    addExercise,
+    renameExercise,
     deleteExercise,
+    addSet,
+    updateSet,
+    deleteSet,
   };
 }

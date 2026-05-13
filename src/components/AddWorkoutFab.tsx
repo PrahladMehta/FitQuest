@@ -1,5 +1,6 @@
 import { Pressable, StyleSheet, Text } from 'react-native';
 import { colors } from '../constants/theme';
+import Icon from './Icon';
 
 type Props = {
   bottom: number;
@@ -16,7 +17,7 @@ export default function AddWorkoutFab({ bottom, onPress }: Props) {
       ]}
       onPress={onPress}
     >
-      <Text style={styles.icon}>＋</Text>
+      <Icon name="plus" color={colors.background} size={20} />
       <Text style={styles.label}>Add Workout</Text>
     </Pressable>
   );
@@ -41,16 +42,10 @@ const styles = StyleSheet.create({
   fabPressed: {
     backgroundColor: colors.accentPressed,
   },
-  icon: {
-    color: colors.background,
-    fontSize: 22,
-    fontWeight: '700',
-    marginRight: 6,
-    lineHeight: 22,
-  },
   label: {
     color: colors.background,
     fontSize: 15,
     fontWeight: '700',
+    marginLeft: 6,
   },
 });

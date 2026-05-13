@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
 import {
   Alert,
-  FlatList,
   KeyboardAvoidingView,
   Modal,
   Platform,
@@ -14,13 +13,10 @@ import {
 } from 'react-native';
 import { colors } from '../constants/theme';
 import { genId } from '../utils/id';
-import type { Exercise, Workout } from '../types/workout';
+import type { Exercise, ExerciseSet, Workout } from '../types/workout';
+import AddExerciseRow from './AddExerciseRow';
 import DayPicker from './DayPicker';
-import ExerciseFormFields, {
-  emptyExerciseDraft,
-  validateExercise,
-  type ExerciseDraft,
-} from './ExerciseFormFields';
+import ExerciseCard from './ExerciseCard';
 
 type Props = {
   visible: boolean;
@@ -37,38 +33,56 @@ export default function AddWorkoutModal({
 }: Props) {
   const [title, setTitle] = useState('');
   const [dateKey, setDateKey] = useState(defaultDate);
-  const [draft, setDraft] = useState<ExerciseDraft>(emptyExerciseDraft);
   const [exercises, setExercises] = useState<Exercise[]>([]);
 
   useEffect(() => {
     if (visible) {
       setTitle('');
       setDateKey(defaultDate);
-      setDraft(emptyExerciseDraft);
       setExercises([]);
     }
   }, [visible, defaultDate]);
 
-  const addExercise = () => {
-    const error = validateExercise(draft);
-    if (error) {
-      Alert.alert('Invalid exercise', error);
-      return;
-    }
-    setExercises(prev => [
-      ...prev,
-      {
-        id: genId(),
-        name: draft.name.trim(),
-        sets: Number(draft.sets),
-        reps: Number(draft.reps),
-      },
-    ]);
-    setDraft(emptyExerciseDraft);
+  const addExercise = (name: string) => {
+    setExercises(prev => [...prev, { id: genId(), name, sets: [] }]);
   };
 
-  const removeExercise = (id: string) => {
+  const renameExercise = (id: string, name: string) => {
+    setExercises(prev => prev.map(e => (e.id === id ? { ...e, name } : e)));
+  };
+
+  const deleteExercise = (id: string) => {
     setExercises(prev => prev.filter(e => e.id !== id));
+  };
+
+  const addSet = (exId: string, set: Omit<ExerciseSet, 'id'>) => {
+    setExercises(prev =>
+      prev.map(e =>
+        e.id === exId ? { ...e, sets: [...e.sets, { ...set, id: genId() }] } : e,
+      ),
+    );
+  };
+
+  const updateSet = (
+    exId: string,
+    setId: string,
+    patch: Partial<Omit<ExerciseSet, 'id'>>,
+  ) => {
+    setExercises(prev =>
+      prev.map(e =>
+        e.id === exId
+          ? { ...e, sets: e.sets.map(s => (s.id === setId ? { ...s, ...patch } : s)) }
+          : e,
+      ),
+    );
+  };
+
+  const deleteSet = (exId: string, setId: string) => {
+    setExercises(prev =>
+      prev.map(e =>
+        e.id === exId ? { ...e, sets: e.sets.filter(s => s.id !== setId) } : e,
+      ),
+    );
   };
 
   const save = () => {
@@ -116,36 +130,22 @@ export default function AddWorkoutModal({
             <Text style={styles.fieldLabel}>Day</Text>
             <DayPicker value={dateKey} onChange={setDateKey} />
 
-            <Text style={styles.fieldLabel}>Add Exercise</Text>
-            <ExerciseFormFields draft={draft} onChange={setDraft} onSubmit={addExercise} />
-            <Pressable
-              onPress={addExercise}
-              style={({ pressed }) => [styles.addBtn, pressed && styles.addBtnPressed]}
-            >
-              <Text style={styles.addBtnText}>+ Add to list</Text>
-            </Pressable>
+            <Text style={styles.fieldLabel}>Exercises</Text>
 
-            {exercises.length > 0 && (
-              <FlatList
-                data={exercises}
-                keyExtractor={e => e.id}
-                style={styles.exerciseListBox}
-                scrollEnabled={false}
-                renderItem={({ item }) => (
-                  <View style={styles.chip}>
-                    <View style={styles.chipInfo}>
-                      <Text style={styles.chipText}>{item.name}</Text>
-                      <Text style={styles.chipSub}>
-                        {item.sets} × {item.reps}
-                      </Text>
-                    </View>
-                    <Pressable onPress={() => removeExercise(item.id)} hitSlop={8}>
-                      <Text style={styles.chipX}>✕</Text>
-                    </Pressable>
-                  </View>
-                )}
+            {exercises.map(ex => (
+              <ExerciseCard
+                key={ex.id}
+                exercise={ex}
+                editable
+                onRename={name => renameExercise(ex.id, name)}
+                onDelete={() => deleteExercise(ex.id)}
+                onAddSet={set => addSet(ex.id, set)}
+                onUpdateSet={(setId, patch) => updateSet(ex.id, setId, patch)}
+                onDeleteSet={setId => deleteSet(ex.id, setId)}
               />
-            )}
+            ))}
+
+            <AddExerciseRow onAdd={addExercise} />
           </ScrollView>
 
           <View style={styles.actions}>
@@ -224,53 +224,6 @@ const styles = StyleSheet.create({
     color: colors.text,
     fontSize: 15,
     marginBottom: 8,
-  },
-  addBtn: {
-    backgroundColor: colors.surfaceAlt,
-    paddingVertical: 12,
-    borderRadius: 12,
-    alignItems: 'center',
-    marginTop: 4,
-  },
-  addBtnPressed: {
-    backgroundColor: colors.surfacePressed,
-  },
-  addBtnText: {
-    color: colors.accent,
-    fontWeight: '700',
-    fontSize: 14,
-  },
-  exerciseListBox: {
-    marginTop: 12,
-  },
-  chip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: colors.surfaceAlt,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    borderRadius: 10,
-    marginBottom: 6,
-  },
-  chipInfo: {
-    flex: 1,
-    marginRight: 8,
-  },
-  chipText: {
-    color: colors.text,
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  chipSub: {
-    color: colors.textMuted,
-    fontSize: 12,
-    marginTop: 2,
-  },
-  chipX: {
-    color: colors.danger,
-    fontSize: 14,
-    fontWeight: '700',
   },
   actions: {
     flexDirection: 'row',
