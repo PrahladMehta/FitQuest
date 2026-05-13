@@ -2,7 +2,11 @@
   "permissions": {
     "allow": [
       "Bash(npm install *)",
-      "Bash(npx tsc *)"
+      "Bash(npx tsc *)",
+      "Bash(adb devices *)",
+      "Bash(adb shell *)",
+      "Bash(adb reverse *)",
+      "Bash(adb logcat *)"
     ]
   }
 }
