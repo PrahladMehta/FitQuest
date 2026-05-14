@@ -14,7 +14,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 
 import AddExerciseRow from '../components/AddExerciseRow';
-import ExerciseCard from '../components/ExerciseCard';
+import ExerciseCard, { type BottomBarActions } from '../components/ExerciseCard';
 import Icon from '../components/Icon';
 import { MONTH_NAMES, WEEKDAYS } from '../constants/dates';
 import { colors } from '../constants/theme';
@@ -49,6 +49,14 @@ export default function AddWorkoutScreen({ navigation }: Props) {
   );
 
   const workout = workouts[todayKey];
+
+  const [activeBottomAction, setActiveBottomAction] = useState<BottomBarActions | null>(null);
+  const registerBottomBarActions = useCallback((actions: BottomBarActions) => {
+    setActiveBottomAction(actions);
+    return () => {
+      setActiveBottomAction(prev => (prev === actions ? null : prev));
+    };
+  }, []);
 
   const [titleDraft, setTitleDraft] = useState(workout?.title ?? '');
   useEffect(() => {
@@ -161,10 +169,11 @@ export default function AddWorkoutScreen({ navigation }: Props) {
             onAddSet={set => addSet(todayKey, ex.id, set)}
             onUpdateSet={(setId, patch) => updateSet(todayKey, ex.id, setId, patch)}
             onDeleteSet={setId => deleteSet(todayKey, ex.id, setId)}
+            registerAddSetActions={registerBottomBarActions}
           />
         ))}
 
-        <AddExerciseRow onAdd={handleAddExercise} />
+        <AddExerciseRow onAdd={handleAddExercise} registerActions={registerBottomBarActions} />
 
         <Text style={styles.helperText}>
           Changes are saved automatically.
@@ -172,16 +181,40 @@ export default function AddWorkoutScreen({ navigation }: Props) {
       </ScrollView>
 
       <View style={[styles.bottomBar, { paddingBottom: insets.bottom + 12 }]}>
-        <Pressable
-          onPress={confirmDiscardEmpty}
-          style={({ pressed }) => [
-            styles.doneBtn,
-            pressed && styles.doneBtnPressed,
-          ]}
-        >
-          <Icon name="check" color={colors.background} size={18} />
-          <Text style={styles.doneBtnText}>Done</Text>
-        </Pressable>
+        {activeBottomAction ? (
+          <>
+            <Pressable
+              onPress={activeBottomAction.close}
+              style={({ pressed }) => [
+                styles.cancelBtn,
+                pressed && styles.cancelBtnPressed,
+              ]}
+            >
+              <Text style={styles.cancelBtnText}>Done</Text>
+            </Pressable>
+            <Pressable
+              onPress={activeBottomAction.submit}
+              style={({ pressed }) => [
+                styles.addSetBtn,
+                pressed && styles.doneBtnPressed,
+              ]}
+            >
+              <Icon name="plus" color={colors.background} size={18} />
+              <Text style={styles.doneBtnText}>{activeBottomAction.submitLabel}</Text>
+            </Pressable>
+          </>
+        ) : (
+          <Pressable
+            onPress={confirmDiscardEmpty}
+            style={({ pressed }) => [
+              styles.doneBtn,
+              pressed && styles.doneBtnPressed,
+            ]}
+          >
+            <Icon name="check" color={colors.background} size={18} />
+            <Text style={styles.doneBtnText}>Done</Text>
+          </Pressable>
+        )}
       </View>
     </KeyboardAvoidingView>
   );
@@ -260,6 +293,33 @@ const styles = StyleSheet.create({
     color: colors.background,
     fontSize: 15,
     fontWeight: '700',
+    marginLeft: 6,
+  },
+  cancelBtn: {
+    flex: 1,
+    backgroundColor: colors.surfaceAlt,
+    paddingVertical: 14,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 6,
+  },
+  cancelBtnPressed: {
+    backgroundColor: colors.surfacePressed,
+  },
+  cancelBtnText: {
+    color: colors.text,
+    fontSize: 15,
+    fontWeight: '700',
+  },
+  addSetBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    backgroundColor: colors.accent,
+    paddingVertical: 14,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
     marginLeft: 6,
   },
 });

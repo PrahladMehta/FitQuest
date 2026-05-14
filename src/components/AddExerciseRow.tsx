@@ -1,16 +1,23 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { colors } from '../constants/theme';
+import type { BottomBarActions } from './ExerciseCard';
 import Icon from './Icon';
 
 type Props = {
   onAdd: (name: string) => void;
   placeholder?: string;
+  registerActions?: (actions: BottomBarActions) => () => void;
 };
 
-export default function AddExerciseRow({ onAdd, placeholder }: Props) {
+export default function AddExerciseRow({ onAdd, placeholder, registerActions }: Props) {
   const [open, setOpen] = useState(false);
   const [name, setName] = useState('');
+
+  const close = () => {
+    setOpen(false);
+    setName('');
+  };
 
   const submit = () => {
     const trimmed = name.trim();
@@ -18,6 +25,20 @@ export default function AddExerciseRow({ onAdd, placeholder }: Props) {
     onAdd(trimmed);
     setName('');
   };
+
+  const submitRef = useRef(submit);
+  submitRef.current = submit;
+  const closeRef = useRef(close);
+  closeRef.current = close;
+
+  useEffect(() => {
+    if (!open || !registerActions) return;
+    return registerActions({
+      submit: () => submitRef.current(),
+      close: () => closeRef.current(),
+      submitLabel: 'Add Exercise',
+    });
+  }, [open, registerActions]);
 
   if (!open) {
     return (
@@ -43,24 +64,23 @@ export default function AddExerciseRow({ onAdd, placeholder }: Props) {
         returnKeyType="done"
         onSubmitEditing={submit}
       />
-      <View style={styles.actions}>
-        <Pressable
-          onPress={() => {
-            setOpen(false);
-            setName('');
-          }}
-          style={({ pressed }) => [styles.cancelBtn, pressed && styles.cancelBtnPressed]}
-        >
-          <Text style={styles.cancelText}>Done</Text>
-        </Pressable>
-        <Pressable
-          onPress={submit}
-          style={({ pressed }) => [styles.saveBtn, pressed && styles.saveBtnPressed]}
-        >
-          <Icon name="plus" color={colors.background} size={15} />
-          <Text style={styles.saveText}>Add</Text>
-        </Pressable>
-      </View>
+      {!registerActions && (
+        <View style={styles.actions}>
+          <Pressable
+            onPress={close}
+            style={({ pressed }) => [styles.cancelBtn, pressed && styles.cancelBtnPressed]}
+          >
+            <Text style={styles.cancelText}>Done</Text>
+          </Pressable>
+          <Pressable
+            onPress={submit}
+            style={({ pressed }) => [styles.saveBtn, pressed && styles.saveBtnPressed]}
+          >
+            <Icon name="plus" color={colors.background} size={15} />
+            <Text style={styles.saveText}>Add</Text>
+          </Pressable>
+        </View>
+      )}
     </View>
   );
 }
