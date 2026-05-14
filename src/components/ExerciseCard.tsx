@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
 import {
   Alert,
+  InputAccessoryView,
+  Platform,
   Pressable,
   StyleSheet,
   Text,
@@ -114,6 +116,8 @@ export default function ExerciseCard({
   );
 }
 
+const ADD_SET_ACCESSORY_ID = 'add-set-actions';
+
 function AddSetForm({
   onAdd,
   onClose,
@@ -142,7 +146,28 @@ function AddSetForm({
     onAdd({ reps: r, weight: w });
     setReps('');
     setWeight('');
+    onClose();
   };
+
+  const renderActions = (compact: boolean) => (
+    <View style={[styles.addActions, compact && styles.addActionsCompact]}>
+      <Pressable
+        onPress={onClose}
+        style={({ pressed }) => [styles.doneBtn, pressed && styles.doneBtnPressed]}
+      >
+        <Text style={styles.doneText}>Done</Text>
+      </Pressable>
+      <Pressable
+        onPress={submit}
+        style={({ pressed }) => [styles.confirmBtn, pressed && styles.confirmBtnPressed]}
+      >
+        <Icon name="plus" color={colors.background} size={15} />
+        <Text style={styles.confirmText}>Add Set</Text>
+      </Pressable>
+    </View>
+  );
+
+  const useAccessory = Platform.OS === 'ios';
 
   return (
     <View style={styles.addForm}>
@@ -158,6 +183,7 @@ function AddSetForm({
             style={styles.addInput}
             autoFocus
             returnKeyType="next"
+            inputAccessoryViewID={useAccessory ? ADD_SET_ACCESSORY_ID : undefined}
           />
         </View>
         <View style={styles.addFieldGap} />
@@ -172,24 +198,16 @@ function AddSetForm({
             style={styles.addInput}
             returnKeyType="done"
             onSubmitEditing={submit}
+            inputAccessoryViewID={useAccessory ? ADD_SET_ACCESSORY_ID : undefined}
           />
         </View>
       </View>
-      <View style={styles.addActions}>
-        <Pressable
-          onPress={onClose}
-          style={({ pressed }) => [styles.doneBtn, pressed && styles.doneBtnPressed]}
-        >
-          <Text style={styles.doneText}>Done</Text>
-        </Pressable>
-        <Pressable
-          onPress={submit}
-          style={({ pressed }) => [styles.confirmBtn, pressed && styles.confirmBtnPressed]}
-        >
-          <Icon name="plus" color={colors.background} size={15} />
-          <Text style={styles.confirmText}>Add Set</Text>
-        </Pressable>
-      </View>
+      {renderActions(false)}
+      {useAccessory && (
+        <InputAccessoryView nativeID={ADD_SET_ACCESSORY_ID} backgroundColor={colors.surface}>
+          <View style={styles.accessoryBar}>{renderActions(true)}</View>
+        </InputAccessoryView>
+      )}
     </View>
   );
 }
@@ -286,6 +304,16 @@ const styles = StyleSheet.create({
   addActions: {
     flexDirection: 'row',
     marginTop: 10,
+  },
+  addActionsCompact: {
+    marginTop: 0,
+  },
+  accessoryBar: {
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    backgroundColor: colors.surface,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: colors.surfaceAlt,
   },
   doneBtn: {
     flex: 1,

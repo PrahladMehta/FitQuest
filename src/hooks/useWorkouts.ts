@@ -80,6 +80,34 @@ export function useWorkouts() {
     [mutateWorkout],
   );
 
+  const addExerciseEnsuringWorkout = useCallback(
+    (dateKey: string, name: string, defaultTitle: string) => {
+      setWorkouts(prev => {
+        const newEx: Exercise = { id: genId(), name, sets: [] };
+        const existing = prev[dateKey];
+        if (existing) {
+          return {
+            ...prev,
+            [dateKey]: {
+              ...existing,
+              exercises: [...existing.exercises, newEx],
+            },
+          };
+        }
+        return {
+          ...prev,
+          [dateKey]: {
+            id: genId(),
+            date: dateKey,
+            title: defaultTitle,
+            exercises: [newEx],
+          },
+        };
+      });
+    },
+    [],
+  );
+
   const renameExercise = useCallback(
     (dateKey: string, exerciseId: string, name: string) => {
       mutateExercise(dateKey, exerciseId, e => ({ ...e, name }));
@@ -140,6 +168,7 @@ export function useWorkouts() {
       deleteWorkout,
       setTitle,
       addExercise,
+      addExerciseEnsuringWorkout,
       renameExercise,
       deleteExercise,
       addSet,
@@ -153,6 +182,7 @@ export function useWorkouts() {
       deleteWorkout,
       setTitle,
       addExercise,
+      addExerciseEnsuringWorkout,
       renameExercise,
       deleteExercise,
       addSet,

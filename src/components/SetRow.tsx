@@ -59,8 +59,10 @@ export default function SetRow({ index, set, editable, onUpdate, onDelete }: Pro
           value={repsDraft}
           onChangeText={setRepsDraft}
           onBlur={commitReps}
+          onSubmitEditing={commitReps}
           editable={editable}
           keyboardType="number-pad"
+          returnKeyType="done"
           selectTextOnFocus
           style={[styles.input, !editable && styles.inputReadOnly]}
         />
@@ -76,8 +78,10 @@ export default function SetRow({ index, set, editable, onUpdate, onDelete }: Pro
           value={weightDraft}
           onChangeText={setWeightDraft}
           onBlur={commitWeight}
+          onSubmitEditing={commitWeight}
           editable={editable}
           keyboardType="decimal-pad"
+          returnKeyType="done"
           placeholder="—"
           placeholderTextColor={colors.textFaint}
           selectTextOnFocus

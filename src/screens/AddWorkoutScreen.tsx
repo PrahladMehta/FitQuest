@@ -32,7 +32,7 @@ export default function AddWorkoutScreen({ navigation }: Props) {
     upsertWorkout,
     deleteWorkout,
     setTitle,
-    addExercise,
+    addExerciseEnsuringWorkout,
     renameExercise,
     deleteExercise,
     addSet,
@@ -90,22 +90,17 @@ export default function AddWorkoutScreen({ navigation }: Props) {
 
   const handleAddExercise = useCallback(
     (name: string) => {
-      const fallbackTitle = titleDraft.trim() || 'Workout';
-      if (!workout) {
-        upsertWorkout({
-          id: genId(),
-          date: todayKey,
-          title: fallbackTitle,
-          exercises: [{ id: genId(), name, sets: [] }],
-        });
-      } else {
-        addExercise(todayKey, name);
-      }
+      addExerciseEnsuringWorkout(
+        todayKey,
+        name,
+        titleDraft.trim() || 'Workout',
+      );
     },
-    [workout, titleDraft, todayKey, upsertWorkout, addExercise],
+    [todayKey, titleDraft, addExerciseEnsuringWorkout],
   );
 
   const confirmDiscardEmpty = () => {
+    console.log('confirmDiscardEmpty', workout);
     if (workout && workout.exercises.length === 0) {
       Alert.alert(
         'Discard empty workout?',
